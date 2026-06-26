@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { MapPin } from 'lucide-react';
 
 interface PrayerTimesProps {
   location: { latitude: number; longitude: number };
@@ -63,18 +62,6 @@ interface DailyWeather {
   tempMin: number;
 }
 
-const getPrayerIcon = (name: string) => {
-  const icons: { [key: string]: string } = {
-    Fajr: '🌅',
-    Sunrise: '🌄',
-    Dhuhr: '☀️',
-    Asr: '🌞',
-    Maghrib: '🌆',
-    Isha: '🌙',
-  };
-  return icons[name] || '⏰';
-};
-
 const getTimeUntilNextPrayer = (currentTime: Date, prayers: Prayer[]): { hours: number; mins: number; prayer: string } => {
   const currentTimeInMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
@@ -116,18 +103,6 @@ const getTimeUntilNextPrayer = (currentTime: Date, prayers: Prayer[]): { hours: 
     hours: hours,
     mins: mins
   };
-};
-
-const getPrayerCardBackground = (name: string): string => {
-  const backgrounds: { [key: string]: string } = {
-    Fajr: 'linear-gradient(135deg, rgba(10, 20, 50, 0.4) 0%, rgba(100, 50, 80, 0.3) 100%)',
-    Sunrise: 'linear-gradient(135deg, rgba(255, 140, 0, 0.2) 0%, rgba(255, 200, 0, 0.2) 100%)',
-    Dhuhr: 'linear-gradient(135deg, rgba(255, 200, 50, 0.2) 0%, rgba(135, 206, 235, 0.2) 100%)',
-    Asr: 'linear-gradient(135deg, rgba(255, 140, 0, 0.2) 0%, rgba(255, 100, 0, 0.2) 100%)',
-    Maghrib: 'linear-gradient(135deg, rgba(255, 69, 0, 0.2) 0%, rgba(220, 20, 60, 0.2) 100%)',
-    Isha: 'linear-gradient(135deg, rgba(25, 25, 112, 0.4) 0%, rgba(0, 0, 30, 0.4) 100%)',
-  };
-  return backgrounds[name] || 'transparent';
 };
 
 const formatTo12Hour = (time: string): { time: string; period: string } => {
@@ -184,16 +159,16 @@ const getWeatherDescription = (code: number): string => {
 const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => {
   const [prayers, setPrayers] = useState<Prayer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [nextPrayer, setNextPrayer] = useState<Prayer | null>(null);
+  const [, setNextPrayer] = useState<Prayer | null>(null);
   const [gregorianDate, setGregorianDate] = useState({ day: '', month: '', year: '' });
   const [hijriDate, setHijriDate] = useState({ day: '', month: '', year: '' });
   const [displayLocationName, setDisplayLocationName] = useState(locationName);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [hourlyWeather, setHourlyWeather] = useState<HourlyWeather[]>([]);
   const [dailyWeather, setDailyWeather] = useState<DailyWeather[]>([]);
-  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [, setWeatherLoading] = useState(true);
   const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
@@ -553,7 +528,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                     borderRadius: '20px',
                     padding: '2.75rem 1.5rem',
                     textAlign: 'center',
-                    width: prayer.name === 'Sunrise' ? '100%' : 'auto',
+                    width: prayer.name === 'Sunrise' ? 'auto' : '100%',
                     transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                     transform: prayer.isActive && prayer.name !== 'Sunrise' ? 'translateY(-6px) perspective(1200px) rotateX(2deg)' : 'perspective(1200px)',
                     boxShadow: prayer.isActive && prayer.name !== 'Sunrise'
@@ -561,7 +536,6 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                       : '0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)',
                     opacity: prayer.name === 'Sunrise' ? 0.6 : 1,
                     maxWidth: prayer.name === 'Sunrise' ? '70%' : 'none',
-                    width: prayer.name === 'Sunrise' ? 'auto' : '100%',
                     margin: prayer.name === 'Sunrise' ? '0 auto' : '0',
                     position: 'relative',
                     display: 'flex',
