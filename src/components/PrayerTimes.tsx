@@ -51,6 +51,7 @@ interface WeatherData {
 
 interface HourlyWeather {
   time: string;
+  fullTime: string;
   temperature: number;
   weatherCode: number;
 }
@@ -62,7 +63,7 @@ interface DailyWeather {
   tempMin: number;
 }
 
-const getTimeUntilNextPrayer = (currentTime: Date, prayers: Prayer[]): { hours: number; mins: number; prayer: string } => {
+const getTimeUntilNextPrayer = (currentTime: Date, prayers: Prayer[]): { hours: number; mins: number; secs: number; prayer: string } => {
   const currentTimeInMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
   // Find the current/next prayer
@@ -90,18 +91,21 @@ const getTimeUntilNextPrayer = (currentTime: Date, prayers: Prayer[]): { hours: 
     nextPrayerTime = hours * 60 + minutes + 24 * 60;
   }
 
-  let timeRemaining = nextPrayerTime - currentTimeInMinutes;
+  let timeRemaining = nextPrayerTime - currentTimeInMinutes - 5;
   if (timeRemaining <= 0) {
     timeRemaining += 24 * 60;
   }
 
-  const hours = Math.floor(timeRemaining / 60);
-  const mins = timeRemaining % 60;
+  const timeRemainingInSeconds = timeRemaining * 60 + (60 - currentTime.getSeconds());
+  const hours = Math.floor(timeRemainingInSeconds / 3600);
+  const mins = Math.floor((timeRemainingInSeconds % 3600) / 60);
+  const secs = Math.floor(timeRemainingInSeconds % 60);
 
   return {
     prayer: currentPrayer.name,
     hours: hours,
-    mins: mins
+    mins: mins,
+    secs: secs
   };
 };
 
@@ -171,6 +175,18 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
   const [, setWeatherLoading] = useState(true);
   const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  const [lastPlayedPrayer, setLastPlayedPrayer] = useState<string | null>(null);
+  const [adhaan, setAdhaan] = useState<HTMLAudioElement | null>(null);
+  const [adhaaanEnabled, setAdhaanEnabled] = useState(true);
+  const [prayerAdhaanPrefs, setPrayerAdhaanPrefs] = useState<{ [key: string]: boolean }>({
+    Fajr: true,
+    Dhuhr: true,
+    Asr: true,
+    Maghrib: true,
+    Isha: true,
+  });
+  const [hadith, setHadith] = useState<{ text: string; reference: string } | null>(null);
 
   useEffect(() => {
     const fetchLocationName = async () => {
@@ -208,12 +224,12 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
 
         setGregorianDate({
           day: data.data.date.gregorian.day,
-          month: data.data.date.gregorian.month,
+          month: typeof data.data.date.gregorian.month === 'object' ? data.data.date.gregorian.month.number : data.data.date.gregorian.month,
           year: data.data.date.gregorian.year,
         });
         setHijriDate({
           day: data.data.date.hijri.day,
-          month: data.data.date.hijri.month,
+          month: typeof data.data.date.hijri.month === 'object' ? data.data.date.hijri.month.number : data.data.date.hijri.month,
           year: data.data.date.hijri.year,
         });
 
@@ -273,6 +289,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
           const [hours, minutes] = timeOnly.split(':');
           hourlyData.push({
             time: `${hours}:${minutes}`,
+            fullTime: timeStr,
             temperature: Math.round(hourly.temperature_2m[i]),
             weatherCode: hourly.weather_code[i],
           });
@@ -285,7 +302,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
         const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const dailyData: DailyWeather[] = [];
 
-        for (let i = 0; i < Math.min(10, daily.time.length); i++) {
+        for (let i = 1; i < Math.min(6, daily.time.length); i++) {
           const date = new Date(daily.time[i]);
           const dayName = daysOfWeek[date.getDay()];
 
@@ -317,10 +334,94 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
   }, []);
 
   useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const audio = new Audio('https://cdn.jsdelivr.net/npm/adhaan-audio@1.0.0/adhaan.mp3');
+    setAdhaan(audio);
+
+    const savedPrefs = localStorage.getItem('prayerAdhaanPrefs');
+    if (savedPrefs) {
+      setPrayerAdhaanPrefs(JSON.parse(savedPrefs));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('prayerAdhaanPrefs', JSON.stringify(prayerAdhaanPrefs));
+  }, [prayerAdhaanPrefs]);
+
+  useEffect(() => {
+    const fetchHadith = async () => {
+      try {
+        const hadiths = [
+          { text: "The best of you are those who are best to their families, and I am the best among you to my family.", reference: "Tirmidhi" },
+          { text: "Verily, Allah loves those who are patient.", reference: "Quran 3:146" },
+          { text: "The greatest jihad is a struggle against your own self.", reference: "Hadith" },
+          { text: "Knowledge is that which benefits, not that which is memorized.", reference: "Hadith" },
+          { text: "Wealth and children are adornments of life, but the everlasting good deeds are better.", reference: "Quran 18:46" },
+          { text: "The best charity is that given when one is in need yet gives.", reference: "Hadith" },
+          { text: "Do not belittle any good deed, no matter how small it may seem.", reference: "Muslim" },
+          { text: "Paradise is under the feet of your mothers.", reference: "Hadith" },
+          { text: "Cleanliness is half of faith.", reference: "Muslim" },
+          { text: "The truthful merchant will be with the prophets on the Day of Judgment.", reference: "Tirmidhi" },
+        ];
+
+        const randomHadith = hadiths[Math.floor(Math.random() * hadiths.length)];
+        setHadith(randomHadith);
+      } catch (err) {
+        console.log('Hadith fetch error:', err);
+      }
+    };
+
+    fetchHadith();
+  }, []);
+
+  useEffect(() => {
+    if (prayers.length === 0 || !adhaan || !adhaaanEnabled) return;
+
+    const now = currentTime;
+    const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+
+    for (const prayer of prayers) {
+      if (prayer.name === 'Sunrise') continue;
+
+      const [hours, minutes] = prayer.time.split(':').map(Number);
+      const prayerTimeInMinutes = hours * 60 + minutes;
+      const timeDiff = Math.abs(prayerTimeInMinutes - currentTimeInMinutes);
+
+      if (timeDiff <= 1 && lastPlayedPrayer !== prayer.name && prayerAdhaanPrefs[prayer.name]) {
+        setLastPlayedPrayer(prayer.name);
+        adhaan.currentTime = 0;
+        adhaan.play().catch(err => console.log('Adhaan play error:', err));
+        break;
+      }
+    }
+  }, [currentTime, prayers, adhaan, adhaaanEnabled, lastPlayedPrayer, prayerAdhaanPrefs]);
+
+  useEffect(() => {
     if (prayers.length === 0) return;
 
     const now = currentTime;
     const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Find current prayer (prayer_time <= current_time) and next prayer (prayer_time > current_time)
+    let currentPrayerObj = null;
+    let nextPrayerObj = null;
+
+    for (let i = 0; i < prayers.length; i++) {
+      const prayer = prayers[i];
+      const [hours, minutes] = prayer.time.split(':').map(Number);
+      const prayerTimeInMinutes = hours * 60 + minutes;
+
+      if (prayerTimeInMinutes <= currentTimeInMinutes) {
+        currentPrayerObj = prayer;
+      } else if (!nextPrayerObj) {
+        nextPrayerObj = prayer;
+      }
+    }
 
     let updatedPrayers = prayers.map(prayer => {
       const [hours, minutes] = prayer.time.split(':').map(Number);
@@ -329,29 +430,16 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
 
       return {
         ...prayer,
-        isActive: false,
+        isActive: currentPrayerObj ? prayer.name === currentPrayerObj.name : false,
+        isNext: nextPrayerObj ? prayer.name === nextPrayerObj.name : false,
+        isUpcoming: timeDiff > 0,
         isComing: timeDiff > 0 && timeDiff <= 120,
+        isPast: timeDiff < 0,
       };
     });
 
-    // Find the next upcoming prayer
-    const nextPrayer = updatedPrayers.find(p => {
-      const [hours, minutes] = p.time.split(':').map(Number);
-      const prayerTimeInMinutes = hours * 60 + minutes;
-      return prayerTimeInMinutes > currentTimeInMinutes;
-    });
-
-    if (nextPrayer) {
-      updatedPrayers = updatedPrayers.map(p => ({
-        ...p,
-        isActive: p.name === nextPrayer.name
-      }));
-      setNextPrayer(nextPrayer);
-    } else {
-      setNextPrayer(null);
-    }
-
     setPrayers(updatedPrayers);
+    setNextPrayer(nextPrayerObj || null);
   }, [currentTime, prayers.length]);
 
   if (loading) {
@@ -374,7 +462,10 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
   const gregorianMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-  const hijriMonthName = hijriMonths[parseInt(hijriDate.month) - 1] || '';
+  const hijriMonthName = (() => {
+    const month = hijriMonths[parseInt(hijriDate.month) - 1];
+    return typeof month === 'string' ? month : (month?.en || '');
+  })();
   const gregorianMonthName = gregorianMonths[parseInt(gregorianDate.month) - 1] || '';
   const dayOfWeekName = daysOfWeek[currentTime.getDay()];
 
@@ -397,8 +488,13 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
   const currentTheme = theme === 'dark' ? darkTheme : lightTheme;
   const tempDisplay = (celsius: number) => getTemperatureDisplay(celsius, tempUnit);
 
+  const isMobile = windowWidth < 768;
+  const isTablet = windowWidth < 1024;
+  const prayerColumns = isMobile ? 2 : isTablet ? 3 : 6;
+  const heroCols = isMobile ? 1 : 2;
+
   return (
-    <div style={{ backgroundColor: currentTheme.bg, color: currentTheme.text, minHeight: '100vh', position: 'relative', padding: '3rem', overflow: 'hidden' }}>
+    <div style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }} className="min-h-screen relative overflow-hidden px-2 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6 pb-4 sm:pb-12">
       {/* Ambient Glows */}
       <div style={{
         position: 'absolute',
@@ -422,331 +518,323 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
       }}></div>
 
       {/* Dashboard Container */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1.9fr 0.5fr',
-        gap: 'clamp(1.5rem, 3vw, 2.5rem)',
-        zIndex: 1,
-        position: 'relative',
-        maxWidth: '1600px',
-        margin: '0 auto',
-        padding: 'clamp(1rem, 3vw, 3rem)',
-        width: '100%'
-      }}>
-        {/* LEFT COLUMN */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-          {/* Hero Card */}
-          <div style={{
-            background: currentTheme.glassCard,
-            backdropFilter: 'blur(40px)',
-            WebkitBackdropFilter: 'blur(40px)',
-            border: `1px solid ${currentTheme.glassBorder}`,
-            borderRadius: '32px',
-            padding: 'clamp(1.5rem, 5vw, 3rem)',
-            boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)',
-            display: 'grid',
-            gridTemplateColumns: 'clamp(1fr, 50vw, 1fr) clamp(1fr, 50vw, 1fr)',
-            gridTemplateRows: 'auto auto',
-            gap: 'clamp(1rem, 3vw, 2rem)',
-            alignItems: 'start'
-          }}>
-            {/* Clock - Top Left */}
-            <div style={{ gridColumn: '1', gridRow: '1' }}>
-              <div style={{ fontSize: 'clamp(0.85rem, 2vw, 1.2rem)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.3em', color: currentTheme.muted, marginBottom: 'clamp(0.5rem, 2vw, 1rem)' }}>
-                {displayLocationName}
-              </div>
-              <div style={{ fontFamily: 'Bodoni Moda, serif', fontSize: 'clamp(3.5rem, 12vw, 8.5rem)', fontWeight: 400, lineHeight: 0.9, letterSpacing: '-0.03em' }}>
-                {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                <span style={{ fontSize: 'clamp(1.2rem, 4vw, 2.8rem)', fontFamily: 'Inter, sans-serif', fontWeight: 300, letterSpacing: '0.05em', marginLeft: '0.5rem', color: '#94a3b8' }}>
-                  {currentTime.toLocaleTimeString('en-US', { hour12: true }).split(' ')[1]}
-                </span>
-              </div>
-            </div>
-
-            {/* Date Box - Top Right */}
-            <div style={{ textAlign: 'right', gridColumn: '2', gridRow: '1' }}>
-              <div style={{ fontFamily: 'Bodoni Moda, serif', fontSize: 'clamp(1.5rem, 4vw, 3.2rem)', lineHeight: 1.1, marginBottom: 'clamp(0.4rem, 1vw, 0.75rem)', color: currentTheme.text }}>
-                {hijriDate.day} {hijriMonthName}
-              </div>
-              <div style={{ fontSize: 'clamp(0.85rem, 2vw, 1.2rem)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.2em', color: currentTheme.muted }}>
-                {dayOfWeekName}, {gregorianMonthName} {gregorianDate.day}
-              </div>
-            </div>
-
-            {/* Current Weather - Bottom Right */}
-            {weather && (
-              <div style={{ gridColumn: '2', gridRow: '2', textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 'clamp(0.4rem, 1vw, 0.75rem)' }}>
-                <div style={{ fontFamily: 'Bodoni Moda, serif', lineHeight: 1 }}>
-                  <div style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
-                    {tempDisplay(weather.temperature).temp}<span style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1.5rem)', marginLeft: '0.3rem' }}>{tempDisplay(weather.temperature).unit}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 lg:gap-4 relative z-10 max-w-7xl mx-auto w-full auto-rows-max">
+        {/* Prayer Times Grid - Full Width */}
+        <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}`, boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)' }} className="col-span-1 lg:col-span-12 backdrop-blur-lg rounded-3xl p-3 sm:p-4 lg:p-6 min-h-fit lg:min-h-60 flex flex-col">
+            <div className="text-base sm:text-lg lg:text-xl font-light uppercase tracking-widest mb-3 sm:mb-4 lg:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+              <div>
+                <div style={{ color: currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-medium uppercase tracking-widest mb-2 sm:mb-3">
+                  {displayLocationName}
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <div style={{ fontFamily: 'Bodoni Moda, serif', color: currentTheme.text }} className="text-6xl sm:text-8xl lg:text-9xl font-light leading-tight tracking-tight">
+                    {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).split(' ')[0]}
+                  </div>
+                  <div style={{ color: currentTheme.muted, fontFamily: 'Bodoni Moda, serif' }} className="text-lg sm:text-2xl lg:text-3xl font-light">
+                    {currentTime.toLocaleTimeString('en-US', { hour12: true }).split(' ')[1]}
                   </div>
                 </div>
-                <div style={{ fontSize: 'clamp(0.75rem, 1.8vw, 1rem)', color: currentTheme.muted, letterSpacing: '0.02em', lineHeight: 1.4 }}>
-                  {getWeatherDescription(weather.weatherCode)}<br/>
-                  Feels like <strong style={{ color: currentTheme.text, fontWeight: 500 }}>
-                    {tempDisplay(weather.feelsLike).temp}{tempDisplay(weather.feelsLike).unit}
-                  </strong>
+              </div>
+              <div className="text-right">
+                <div style={{ fontFamily: 'Bodoni Moda, serif', color: currentTheme.text }} className="text-lg sm:text-2xl lg:text-3xl leading-tight mb-1 sm:mb-2">
+                  {hijriMonthName} {hijriDate.day}
+                </div>
+                <div style={{ color: currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-medium uppercase tracking-wide">
+                  Hijri {hijriDate.year}
+                </div>
+              </div>
+            </div>
+            <div style={{ gridTemplateColumns: `repeat(${prayerColumns}, 1fr)` }} className="grid gap-2 sm:gap-4 lg:gap-6 flex-1 auto-rows-fr w-full">
+              {prayers.map((prayer, index) => {
+                // Calculate prayer duration
+                let durationMins = 0;
+                if (index < prayers.length - 1) {
+                  const [currentHours, currentMins] = prayer.time.split(':').map(Number);
+                  const [nextHours, nextMins] = prayers[index + 1].time.split(':').map(Number);
+                  const currentTotalMins = currentHours * 60 + currentMins;
+                  const nextTotalMins = nextHours * 60 + nextMins;
+                  durationMins = nextTotalMins > currentTotalMins ? nextTotalMins - currentTotalMins : (24 * 60) - currentTotalMins + nextTotalMins;
+                }
+
+                return prayer.name === 'Sunrise' ? null : (
+                <div
+                  key={prayer.name}
+                  style={{
+                    background: prayer.isActive
+                      ? `linear-gradient(135deg, rgba(52, 211, 153, 0.15) 0%, rgba(52, 211, 153, 0.08) 100%), ${currentTheme.glassCard}`
+                      : prayer.isUpcoming
+                      ? `linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%), ${currentTheme.glassCard}`
+                      : `linear-gradient(135deg, rgba(148, 163, 184, 0.05) 0%, rgba(148, 163, 184, 0.02) 100%), ${currentTheme.glassCard}`,
+                    border: prayer.isActive
+                      ? '1px solid #34d399'
+                      : prayer.isUpcoming
+                      ? '1px solid #3b82f6'
+                      : `1px solid ${currentTheme.glassBorder}`,
+                    boxShadow: prayer.isActive
+                      ? '0 25px 60px rgba(52, 211, 153, 0.3), 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.1)'
+                      : prayer.isUpcoming
+                      ? '0 15px 40px rgba(59, 130, 246, 0.2), 0 10px 25px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)'
+                      : '0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)',
+                    transform: prayer.isActive ? 'translateY(-6px) scale(1.08) perspective(1200px) rotateX(2deg)' : 'perspective(1200px)',
+                  }}
+                  className="rounded-lg sm:rounded-2xl p-2 sm:p-3 lg:p-4 text-center relative flex flex-col justify-center items-center min-h-28 sm:min-h-32 lg:min-h-40 transition-all duration-300 ease-out"
+                >
+                  {/* Adhaan Mute Toggle Button */}
+                  <button
+                    onClick={() => setPrayerAdhaanPrefs(prev => ({ ...prev, [prayer.name]: !prev[prayer.name] }))}
+                    style={{
+                      color: prayerAdhaanPrefs[prayer.name] ? '#34d399' : '#ef4444',
+                    }}
+                    className="absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 lg:bottom-3 lg:right-3 p-0 transition-all duration-200 text-xs sm:text-sm hover:scale-110"
+                    title={prayerAdhaanPrefs[prayer.name] ? 'Adhaan enabled' : 'Adhaan muted'}
+                  >
+                    {prayerAdhaanPrefs[prayer.name] ? '🔊' : '🔇'}
+                  </button>
+                  <div style={{
+                    color: prayer.isActive
+                      ? '#34d399'
+                      : prayer.isUpcoming
+                      ? '#3b82f6'
+                      : '#94a3b8'
+                  }} className="text-xs sm:text-sm lg:text-base uppercase tracking-widest font-light mb-1 sm:mb-2">
+                    {prayer.name}
+                  </div>
+                  <div style={{
+                    fontFamily: 'Bodoni Moda, serif',
+                    color: prayer.isActive
+                      ? '#34d399'
+                      : prayer.isUpcoming
+                      ? '#3b82f6'
+                      : '#94a3b8'
+                  }} className="text-2xl sm:text-4xl lg:text-6xl font-light leading-tight">
+                    {formatTo12Hour(prayer.time).time}
+                    <div style={{ color: prayer.isActive ? '#34d399' : prayer.isUpcoming ? '#3b82f6' : currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-light mt-0.5">
+                      {formatTo12Hour(prayer.time).period}
+                    </div>
+                  </div>
+                  <div style={{ color: currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-light mt-2 sm:mt-3">
+                    {durationMins > 0 ? `${Math.floor(durationMins / 60) > 0 ? `${Math.floor(durationMins / 60)}h ` : ''}${durationMins % 60}m` : prayer.name === 'Isha' ? 'Till Tahajjud' : 'Last prayer'}
+                  </div>
+                  </div>
+                );
+              })}
+
+              {/* Countdown Section */}
+              {prayers.length > 0 && (() => {
+                const timeData = getTimeUntilNextPrayer(currentTime, prayers);
+                const displayText = timeData.prayer === 'Sunrise' ? 'Dhuhr starts in' : `${timeData.prayer} ends in`;
+                return (
+                  <div
+                    style={{
+                      background: `linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%), ${currentTheme.glassCard}`,
+                      border: '1px solid #06b6d4',
+                      boxShadow: '0 15px 40px rgba(6, 182, 212, 0.2), 0 10px 25px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)',
+                    }}
+                    className="rounded-lg sm:rounded-2xl p-2 sm:p-3 lg:p-4 text-center flex flex-col justify-center items-center min-h-28 sm:min-h-32 lg:min-h-40 transition-all duration-300 ease-out"
+                  >
+                    <div style={{ color: '#06b6d4' }} className="text-xs sm:text-sm lg:text-base uppercase tracking-widest font-light mb-2 sm:mb-3">
+                      {displayText}
+                    </div>
+                    <div style={{
+                      fontFamily: 'Bodoni Moda, serif',
+                      color: '#06b6d4',
+                      textShadow: '0 0 10px rgba(6, 182, 212, 0.3)'
+                    }} className="text-2xl sm:text-4xl lg:text-6xl font-light leading-tight">
+                      {timeData.hours > 0 && <>{timeData.hours}<span className="text-sm sm:text-base lg:text-lg ml-1">h</span> </>}
+                      {timeData.mins > 0 && <>{timeData.mins.toString().padStart(2, '0')}<span className="text-sm sm:text-base lg:text-lg ml-1">m</span> </>}
+                      {timeData.secs.toString().padStart(2, '0')}<span className="text-sm sm:text-base lg:text-lg ml-1">s</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+            </div>
+
+            {/* Hadith of the Day */}
+            {hadith && (
+              <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-opacity-20" style={{ borderColor: currentTheme.glassBorder }}>
+                <div style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg font-light uppercase tracking-widest mb-3 sm:mb-4">
+                  Hadith of the Day
+                </div>
+                <div style={{ color: currentTheme.text }} className="text-base sm:text-lg lg:text-2xl font-light leading-relaxed mb-3 sm:mb-4">
+                  {hadith.text}
+                </div>
+                <div style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg font-light">
+                  — {hadith.reference}
+                </div>
+              </div>
+            )}
+        </div>
+
+        {/* LEFT COLUMN */}
+        <div className="col-span-1 lg:col-span-10 row-span-1 flex flex-col gap-3 sm:gap-4 lg:gap-5">
+          {/* Hero Card */}
+          <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}`, boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)' }} className="backdrop-blur-lg rounded-3xl p-3 sm:p-4 lg:p-6 flex flex-col gap-8 sm:gap-12 lg:gap-16">
+            {/* Top Row: Weather and Date */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
+              {/* Current Weather - Top Left */}
+              {weather && (
+                <div className="flex-shrink-0 text-left flex flex-col justify-start gap-2">
+                  <div className="flex items-start gap-2">
+                    <div style={{ fontFamily: 'Bodoni Moda, serif' }} className="leading-tight">
+                      <div style={{ color: currentTheme.text }} className="text-2xl sm:text-4xl lg:text-5xl font-light whitespace-nowrap">
+                        {tempUnit === 'C' ? (
+                          <>
+                            {tempDisplay(weather.temperature).temp}<span className="text-lg sm:text-2xl lg:text-3xl font-light ml-0.5">°C</span>
+                            <span style={{ color: currentTheme.muted }} className="text-lg sm:text-2xl lg:text-3xl font-light ml-1">/</span>
+                            <span className="text-lg sm:text-2xl lg:text-3xl font-light ml-1">{celsiusToFahrenheit(weather.temperature)}°F</span>
+                          </>
+                        ) : (
+                          <>
+                            {tempDisplay(weather.temperature).temp}<span className="text-lg sm:text-2xl lg:text-3xl font-light ml-0.5">°F</span>
+                            <span style={{ color: currentTheme.muted }} className="text-lg sm:text-2xl lg:text-3xl font-light ml-1">/</span>
+                            <span className="text-lg sm:text-2xl lg:text-3xl font-light ml-1">{weather.temperature}°C</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-4xl sm:text-5xl lg:text-6xl leading-none">
+                      {getWeatherIcon(weather.weatherCode)}
+                    </div>
+                  </div>
+                  <div style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg tracking-tight leading-tight">
+                    <div style={{ color: currentTheme.text }} className="font-medium text-sm sm:text-base lg:text-lg">
+                      {getWeatherDescription(weather.weatherCode)}
+                    </div>
+                    <div className="text-sm sm:text-base lg:text-lg">
+                      Feels like <strong style={{ color: currentTheme.text }} className="font-medium">
+                        {tempDisplay(weather.feelsLike).temp}°
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Date Box - Top Right */}
+              <div className="text-right">
+                <div style={{ fontFamily: 'Bodoni Moda, serif', color: currentTheme.text }} className="text-2xl sm:text-3xl lg:text-4xl leading-tight mb-1 sm:mb-2">
+                  {gregorianMonthName} {gregorianDate.day}
+                </div>
+                <div style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg font-medium uppercase tracking-wide">
+                  {dayOfWeekName} {gregorianDate.year}
+                </div>
+                <div style={{ color: currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-medium uppercase tracking-widest mt-2 sm:mt-3">
+                  {displayLocationName}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Row: Hourly Forecast */}
+            {hourlyWeather.length > 0 && (
+              <div className="flex-1">
+                <div className="flex flex-row gap-2 overflow-x-auto pb-1">
+                  {hourlyWeather.filter(hour => {
+                    const forecastDateTime = new Date(hour.fullTime);
+                    return forecastDateTime > currentTime;
+                  }).slice(0, 15).map((hour, index) => (
+                    <div key={index} className="flex flex-col items-center gap-0.5 text-center flex-shrink-0">
+                      <div style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg font-light">
+                        {formatTo12Hour(hour.time).time}
+                      </div>
+                      <div className="text-2xl sm:text-3xl lg:text-4xl leading-tight">
+                        {getWeatherIcon(hour.weatherCode)}
+                      </div>
+                      <div style={{ color: currentTheme.text }} className="text-sm sm:text-base lg:text-lg font-medium">
+                        {tempDisplay(hour.temperature).temp}°
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
           </div>
-
-          {/* Prayer Times Grid */}
-          <div style={{
-            background: currentTheme.glassCard,
-            backdropFilter: 'blur(40px)',
-            WebkitBackdropFilter: 'blur(40px)',
-            border: `1px solid ${currentTheme.glassBorder}`,
-            borderRadius: '32px',
-            padding: 'clamp(2rem, 6vw, 3.5rem)',
-            boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)',
-            minHeight: '361px',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            <div style={{ fontSize: 'clamp(0.75rem, 2vw, 0.95rem)', fontWeight: 300, textTransform: 'uppercase', letterSpacing: '0.25em', color: currentTheme.muted, marginBottom: 'clamp(2rem, 4vw, 2.5rem)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span>Prayer Times</span>
-              {prayers.length > 0 && (() => {
-                const timeData = getTimeUntilNextPrayer(currentTime, prayers);
-                return (
-                  <div style={{ fontSize: 'clamp(0.8rem, 2vw, 0.95rem)', fontFamily: 'Bodoni Moda, serif', fontWeight: 300, color: currentTheme.muted, letterSpacing: '0.03em' }}>
-                    {timeData.prayer} ends in <span style={{ fontSize: 'clamp(1.3rem, 3.2vw, 1.7rem)', fontWeight: 400, color: '#fbbf24', textShadow: '0 0 10px rgba(251, 191, 36, 0.3)' }}>
-                      {timeData.hours > 0 && <>{timeData.hours}<span style={{ fontSize: '0.65em', marginLeft: '0.1em' }}>h</span> </>}
-                      {timeData.mins}<span style={{ fontSize: '0.65em', marginLeft: '0.1em' }}>m</span>
-                    </span>
-                  </div>
-                );
-              })()}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 'clamp(1rem, 2.5vw, 1.5rem)', flex: 1, alignContent: 'center' }}>
-              {prayers.map((prayer) => (
-                <div
-                  key={prayer.name}
-                  style={{
-                    background: prayer.isActive ? `linear-gradient(135deg, rgba(52, 211, 153, 0.1) 0%, rgba(52, 211, 153, 0.05) 100%), ${currentTheme.glassCard}` : currentTheme.glassCard,
-                    border: prayer.isActive ? '1px solid #34d399' : `1px solid ${currentTheme.glassBorder}`,
-                    borderRadius: '20px',
-                    padding: '2.75rem 1.5rem',
-                    textAlign: 'center',
-                    width: prayer.name === 'Sunrise' ? 'auto' : '100%',
-                    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                    transform: prayer.isActive && prayer.name !== 'Sunrise' ? 'translateY(-6px) perspective(1200px) rotateX(2deg)' : 'perspective(1200px)',
-                    boxShadow: prayer.isActive && prayer.name !== 'Sunrise'
-                      ? '0 20px 50px rgba(0, 0, 0, 0.4), 0 10px 20px rgba(52, 211, 153, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.1)'
-                      : '0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)',
-                    opacity: prayer.name === 'Sunrise' ? 0.6 : 1,
-                    maxWidth: prayer.name === 'Sunrise' ? '70%' : 'none',
-                    margin: prayer.name === 'Sunrise' ? '0 auto' : '0',
-                    position: 'relative',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    minHeight: prayer.name === 'Sunrise' ? '180px' : '200px',
-                  }}
-                >
-                  <div style={{ fontSize: prayer.name === 'Sunrise' ? 'clamp(0.6rem, 1.5vw, 0.75rem)' : 'clamp(0.85rem, 2.3vw, 1.05rem)', textTransform: 'uppercase', letterSpacing: '0.2em', color: prayer.isActive && prayer.name !== 'Sunrise' ? '#34d399' : currentTheme.muted, marginBottom: prayer.name === 'Sunrise' ? 'clamp(0.6rem, 1.5vw, 0.9rem)' : 'clamp(0.8rem, 2vw, 1rem)', fontWeight: 300 }}>
-                    {prayer.name}
-                  </div>
-                  <div style={{ fontFamily: 'Bodoni Moda, serif', fontSize: prayer.name === 'Sunrise' ? 'clamp(0.95rem, 2.5vw, 1.3rem)' : 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 400, color: currentTheme.text, lineHeight: 1 }}>
-                    {formatTo12Hour(prayer.time).time}
-                    <div style={{ fontSize: prayer.name === 'Sunrise' ? 'clamp(0.55rem, 1vw, 0.7rem)' : 'clamp(0.7rem, 1.6vw, 0.95rem)', color: currentTheme.muted, marginTop: '0.25rem' }}>
-                      {formatTo12Hour(prayer.time).period}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* RIGHT COLUMN - Weather Forecast Strips */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(1.5rem, 2vw, 2.5rem)', marginLeft: 'auto', maxWidth: '600px' }}>
-          {/* Weather Forecast Strips */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(1rem, 2vw, 1.5rem)', height: 'fit-content' }}>
-          {/* LEFT STRIP - Daily Forecast (10-Day) */}
-          <div style={{
-            background: currentTheme.glassCard,
-            backdropFilter: 'blur(40px)',
-            WebkitBackdropFilter: 'blur(40px)',
-            border: `1px solid ${currentTheme.glassBorder}`,
-            borderRadius: '32px',
-            padding: 'clamp(1rem, 3vw, 1.5rem)',
-            boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-            <div style={{ fontSize: 'clamp(0.65rem, 1.8vw, 0.8rem)', fontWeight: 300, textTransform: 'uppercase', letterSpacing: '0.25em', color: currentTheme.muted, marginBottom: 'clamp(0.75rem, 2vw, 1rem)' }}>
-              10-Day
+        <div className="col-span-1 lg:col-span-2 row-span-1">
+          {/* Daily Forecast (5-Day) */}
+          <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}`, boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)' }} className="backdrop-blur-lg rounded-3xl p-3 sm:p-4 lg:p-6 h-full flex flex-col">
+            <div style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg font-light uppercase tracking-widest mb-2 sm:mb-3 lg:mb-4">
+              5-Day
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.8rem, 2vw, 1.2rem)', flex: 1 }}>
-              {dailyWeather.slice(0, 10).map((day, index) => (
-                <div key={index} style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: 'clamp(0.3rem, 1vw, 0.5rem)',
-                  gap: 'clamp(0.2rem, 1vw, 0.3rem)'
-                }}>
-                  <span style={{
-                    fontSize: 'clamp(0.9rem, 2.5vw, 1.1rem)',
-                    fontWeight: 300,
-                    letterSpacing: '0.02em',
-                    color: currentTheme.text,
-                    minWidth: '40px'
-                  }}>{day.day}</span>
-                  <div style={{ fontSize: 'clamp(2rem, 6vw, 2.4rem)', lineHeight: '1', flex: 0, marginRight: '-0.1rem' }}>
+            <div className="flex flex-col gap-2 sm:gap-2.5 lg:gap-3 flex-1 justify-between">
+              {dailyWeather.slice(0, 5).map((day, index) => (
+                <div key={index} className="flex flex-row items-center justify-between gap-1.5 sm:gap-2 flex-shrink-0">
+                  <span style={{ color: currentTheme.text }} className="text-sm sm:text-base lg:text-lg font-light tracking-wide min-w-fit">{day.day}</span>
+                  <div className="text-2xl sm:text-3xl lg:text-4xl leading-tight flex-shrink-0">
                     {getWeatherIcon(day.weatherCode)}
                   </div>
-                  <div style={{ fontSize: 'clamp(0.85rem, 2.2vw, 1.05rem)', fontWeight: 300, letterSpacing: '0.01em', textAlign: 'right', flex: 1 }}>
-                    <span style={{ color: currentTheme.text }}>{tempDisplay(day.tempMax).temp}°</span>
-                    <span style={{ color: currentTheme.muted, marginLeft: '0.5rem' }}>{tempDisplay(day.tempMin).temp}°</span>
+                  <div style={{ color: currentTheme.text }} className="text-sm sm:text-base lg:text-lg font-light tracking-tight text-right flex-1">
+                    <span>{tempDisplay(day.tempMax).temp}°</span>
+                    <span style={{ color: currentTheme.muted }} className="ml-0.5 sm:ml-1">{tempDisplay(day.tempMin).temp}°</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* RIGHT STRIP - Hourly Forecast (10-Hour) */}
-          <div style={{
-            background: currentTheme.glassCard,
-            backdropFilter: 'blur(40px)',
-            WebkitBackdropFilter: 'blur(40px)',
-            border: `1px solid ${currentTheme.glassBorder}`,
-            borderRadius: '32px',
-            padding: 'clamp(1rem, 3vw, 1.5rem)',
-            boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-            <div style={{ fontSize: 'clamp(0.65rem, 1.8vw, 0.8rem)', fontWeight: 300, textTransform: 'uppercase', letterSpacing: '0.25em', color: currentTheme.muted, marginBottom: 'clamp(0.75rem, 2vw, 1rem)' }}>
-              Hourly
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.8rem, 2vw, 1.2rem)', flex: 1 }}>
-              {hourlyWeather.filter(hour => {
-                const forecastHour = parseInt(hour.time.split(':')[0], 10);
-                return forecastHour >= currentTime.getHours();
-              }).slice(0, 10).map((hour, index) => (
-                <div key={index} style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: 'clamp(0.3rem, 1vw, 0.5rem)',
-                  gap: 'clamp(0.2rem, 1vw, 0.3rem)'
-                }}>
-                  <div style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1.1rem)', color: currentTheme.muted, minWidth: '40px' }}>
-                    {hour.time}
-                  </div>
-                  <div style={{ fontSize: 'clamp(2rem, 6vw, 2.4rem)', lineHeight: '1', flex: 0, marginRight: '-0.1rem' }}>
-                    {getWeatherIcon(hour.weatherCode)}
-                  </div>
-                  <div style={{ fontFamily: 'Bodoni Moda, serif', fontSize: 'clamp(0.85rem, 2.2vw, 1.05rem)', fontWeight: 300, color: currentTheme.text, textAlign: 'right', flex: 1 }}>
-                    {tempDisplay(hour.temperature).temp}{tempDisplay(hour.temperature).unit}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
         </div>
       </div>
 
       {/* Toggle Controls - Bottom Right Corner */}
-      <div style={{
-        position: 'fixed',
-        bottom: '1.5rem',
-        right: '1.5rem',
-        display: 'flex',
-        gap: '0.5rem',
-        zIndex: 100,
-      }}>
+      <div className="fixed bottom-2 sm:bottom-3 right-2 sm:right-3 flex flex-col sm:flex-row gap-1 sm:gap-2 z-50">
+        {/* Adhaan Sound Toggle */}
+        <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}` }} className="backdrop-blur-lg rounded-full p-1 flex gap-1">
+          <button
+            onClick={() => setAdhaanEnabled(!adhaaanEnabled)}
+            style={{
+              background: adhaaanEnabled ? '#34d399' : 'transparent',
+              color: adhaaanEnabled ? '#070a12' : currentTheme.text,
+            }}
+            className="px-2 sm:px-3 py-1 rounded-full border-none cursor-pointer text-xs sm:text-sm transition-all duration-300 ease-out"
+            title="Toggle Adhaan sound"
+          >
+            {adhaaanEnabled ? '🔊' : '🔇'}
+          </button>
+        </div>
+
         {/* Temperature Unit Toggle */}
-        <div style={{
-          background: currentTheme.glassCard,
-          backdropFilter: 'blur(40px)',
-          WebkitBackdropFilter: 'blur(40px)',
-          border: `1px solid ${currentTheme.glassBorder}`,
-          borderRadius: '50px',
-          padding: '0.25rem',
-          display: 'flex',
-          gap: '0.25rem',
-        }}>
+        <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}` }} className="backdrop-blur-lg rounded-full p-1 flex gap-1">
           <button
             onClick={() => setTempUnit('C')}
             style={{
-              padding: '0.25rem 0.6rem',
-              borderRadius: '50px',
-              border: 'none',
               background: tempUnit === 'C' ? '#34d399' : 'transparent',
               color: tempUnit === 'C' ? '#070a12' : currentTheme.text,
-              cursor: 'pointer',
-              fontWeight: tempUnit === 'C' ? 600 : 400,
-              fontSize: '0.7rem',
-              transition: 'all 0.3s ease',
             }}
+            className="px-2 sm:px-3 py-1 rounded-full border-none cursor-pointer text-xs sm:text-sm font-medium transition-all duration-300 ease-out"
           >
             °C
           </button>
           <button
             onClick={() => setTempUnit('F')}
             style={{
-              padding: '0.25rem 0.6rem',
-              borderRadius: '50px',
-              border: 'none',
               background: tempUnit === 'F' ? '#34d399' : 'transparent',
               color: tempUnit === 'F' ? '#070a12' : currentTheme.text,
-              cursor: 'pointer',
-              fontWeight: tempUnit === 'F' ? 600 : 400,
-              fontSize: '0.7rem',
-              transition: 'all 0.3s ease',
             }}
+            className="px-2 sm:px-3 py-1 rounded-full border-none cursor-pointer text-xs sm:text-sm font-medium transition-all duration-300 ease-out"
           >
             °F
           </button>
         </div>
 
         {/* Theme Toggle */}
-        <div style={{
-          background: currentTheme.glassCard,
-          backdropFilter: 'blur(40px)',
-          WebkitBackdropFilter: 'blur(40px)',
-          border: `1px solid ${currentTheme.glassBorder}`,
-          borderRadius: '50px',
-          padding: '0.25rem',
-          display: 'flex',
-          gap: '0.25rem',
-        }}>
+        <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}` }} className="backdrop-blur-lg rounded-full p-1 flex gap-1">
           <button
             onClick={() => setTheme('dark')}
             style={{
-              padding: '0.25rem 0.6rem',
-              borderRadius: '50px',
-              border: 'none',
               background: theme === 'dark' ? '#34d399' : 'transparent',
               color: theme === 'dark' ? '#070a12' : currentTheme.text,
-              cursor: 'pointer',
-              fontWeight: theme === 'dark' ? 600 : 400,
-              fontSize: '0.7rem',
-              transition: 'all 0.3s ease',
             }}
+            className="px-2 sm:px-3 py-1 rounded-full border-none cursor-pointer text-xs sm:text-sm transition-all duration-300 ease-out"
           >
             🌙
           </button>
           <button
             onClick={() => setTheme('light')}
             style={{
-              padding: '0.25rem 0.6rem',
-              borderRadius: '50px',
-              border: 'none',
               background: theme === 'light' ? '#34d399' : 'transparent',
               color: theme === 'light' ? '#070a12' : currentTheme.text,
-              cursor: 'pointer',
-              fontWeight: theme === 'light' ? 600 : 400,
-              fontSize: '0.7rem',
-              transition: 'all 0.3s ease',
             }}
+            className="px-2 sm:px-3 py-1 rounded-full border-none cursor-pointer text-xs sm:text-sm transition-all duration-300 ease-out"
           >
             ☀️
           </button>
