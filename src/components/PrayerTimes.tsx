@@ -141,6 +141,11 @@ const celsiusToFahrenheit = (celsius: number): number => {
   return Math.round((celsius * 9/5) + 32);
 };
 
+const capitalize = (str: string): string => {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 const getTemperatureDisplay = (celsius: number, unit: 'C' | 'F'): { temp: number; unit: string } => {
   if (unit === 'F') {
     return { temp: celsiusToFahrenheit(celsius), unit: '°F' };
@@ -225,15 +230,18 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
         const data: ApiResponse = await response.json();
         const timings = data.data.timings;
 
+        const gregorianMonth = typeof data.data.date.gregorian.month === 'object' ? String((data.data.date.gregorian.month as any).number) : String(data.data.date.gregorian.month);
+        const hijriMonth = typeof data.data.date.hijri.month === 'object' ? String((data.data.date.hijri.month as any).number) : String(data.data.date.hijri.month);
+
         setGregorianDate({
-          day: data.data.date.gregorian.day,
-          month: data.data.date.gregorian.month,
-          year: data.data.date.gregorian.year,
+          day: String(data.data.date.gregorian.day),
+          month: gregorianMonth,
+          year: String(data.data.date.gregorian.year),
         });
         setHijriDate({
-          day: data.data.date.hijri.day,
-          month: data.data.date.hijri.month,
-          year: data.data.date.hijri.year,
+          day: String(data.data.date.hijri.day),
+          month: hijriMonth,
+          year: String(data.data.date.hijri.year),
         });
 
         const prayerList = [
@@ -465,7 +473,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
   const gregorianMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-  const hijriMonthName = hijriMonths[parseInt(hijriDate.month) - 1] || '';
+  const hijriMonthName = capitalize(hijriMonths[parseInt(hijriDate.month || '1') - 1] || 'Unknown');
   const gregorianMonthName = gregorianMonths[parseInt(gregorianDate.month) - 1] || '';
   const dayOfWeekName = daysOfWeek[currentTime.getDay()];
 
@@ -535,15 +543,27 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                 </div>
               </div>
               <div className="text-right">
-                <div style={{ fontFamily: 'Bodoni Moda, serif', color: currentTheme.text }} className="text-lg sm:text-2xl lg:text-3xl leading-tight mb-1 sm:mb-2">
-                  {hijriMonthName} {hijriDate.day}
+                <div style={{ fontFamily: 'Bodoni Moda, serif', color: currentTheme.text }} className="text-base sm:text-lg lg:text-2xl leading-tight mb-2 font-light">
+                  {dayOfWeekName}
                 </div>
-                <div style={{ color: currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-medium uppercase tracking-wide">
-                  Hijri {hijriDate.year}
+                {/* Dates on separate lines */}
+                <div style={{ fontFamily: 'Bodoni Moda, serif' }} className="text-right">
+                  <div style={{ color: theme === 'dark' ? '#ffffff' : '#1a1a1a', textTransform: 'capitalize' }} className="text-lg sm:text-2xl lg:text-3xl leading-tight mb-1">
+                    {gregorianMonthName} {gregorianDate.day}
+                    <span className="text-xs sm:text-sm lg:text-base" style={{ color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }}>
+                      {' '}{gregorianDate.year}
+                    </span>
+                  </div>
+                  <div style={{ color: theme === 'dark' ? '#ffffff' : '#1a1a1a', textTransform: 'capitalize' }} className="text-lg sm:text-2xl lg:text-3xl leading-tight">
+                    {hijriMonthName} {hijriDate.day}
+                    <span className="text-xs sm:text-sm lg:text-base" style={{ color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }}>
+                      {' '}{hijriDate.year}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-            <div style={{ gridTemplateColumns: `repeat(${prayerColumns}, 1fr)` }} className="grid gap-2 sm:gap-2 md:gap-3 lg:gap-4 flex-1 auto-rows-fr w-full">
+            <div style={{ gridTemplateColumns: `repeat(${prayerColumns}, 1fr)` }} className="grid gap-2 sm:gap-2 md:gap-3 lg:gap-4 flex-1 auto-rows-fr w-full mt-6 sm:mt-8 lg:mt-10">
               {prayers.map((prayer, index) => {
                 // Calculate prayer duration
                 let durationMins = 0;
@@ -651,15 +671,12 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
 
             {/* Hadith of the Day */}
             {hadith && (
-              <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-opacity-20" style={{ borderColor: currentTheme.glassBorder }}>
-                <div style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg font-light uppercase tracking-widest mb-3 sm:mb-4">
-                  Hadith of the Day
-                </div>
-                <div style={{ color: currentTheme.text }} className="text-base sm:text-lg lg:text-2xl font-light leading-relaxed mb-3 sm:mb-4">
-                  {hadith.text}
-                </div>
-                <div style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg font-light">
-                  — {hadith.reference}
+              <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-opacity-20 text-center" style={{ borderColor: currentTheme.glassBorder }}>
+                <div style={{ color: currentTheme.text }} className="text-base sm:text-lg lg:text-2xl font-light leading-relaxed flex flex-wrap items-baseline gap-2 justify-center">
+                  <span>{hadith.text}</span>
+                  <span style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg whitespace-nowrap">
+                    — {hadith.reference}
+                  </span>
                 </div>
               </div>
             )}
@@ -716,9 +733,6 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                 </div>
                 <div style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg font-medium uppercase tracking-wide">
                   {dayOfWeekName} {gregorianDate.year}
-                </div>
-                <div style={{ color: currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-medium uppercase tracking-widest mt-2 sm:mt-3">
-                  {displayLocationName}
                 </div>
               </div>
             </div>
