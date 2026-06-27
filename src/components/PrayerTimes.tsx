@@ -194,7 +194,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
     Maghrib: true,
     Isha: true,
   });
-  const [hadith, setHadith] = useState<{ text: string; reference: string } | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const fetchLocationName = async () => {
@@ -365,32 +365,6 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
   }, [prayerAdhaanPrefs]);
 
   useEffect(() => {
-    const fetchHadith = async () => {
-      try {
-        const hadiths = [
-          { text: "The best of you are those who are best to their families, and I am the best among you to my family.", reference: "Tirmidhi" },
-          { text: "Verily, Allah loves those who are patient.", reference: "Quran 3:146" },
-          { text: "The greatest jihad is a struggle against your own self.", reference: "Hadith" },
-          { text: "Knowledge is that which benefits, not that which is memorized.", reference: "Hadith" },
-          { text: "Wealth and children are adornments of life, but the everlasting good deeds are better.", reference: "Quran 18:46" },
-          { text: "The best charity is that given when one is in need yet gives.", reference: "Hadith" },
-          { text: "Do not belittle any good deed, no matter how small it may seem.", reference: "Muslim" },
-          { text: "Paradise is under the feet of your mothers.", reference: "Hadith" },
-          { text: "Cleanliness is half of faith.", reference: "Muslim" },
-          { text: "The truthful merchant will be with the prophets on the Day of Judgment.", reference: "Tirmidhi" },
-        ];
-
-        const randomHadith = hadiths[Math.floor(Math.random() * hadiths.length)];
-        setHadith(randomHadith);
-      } catch (err) {
-        console.log('Hadith fetch error:', err);
-      }
-    };
-
-    fetchHadith();
-  }, []);
-
-  useEffect(() => {
     if (prayers.length === 0 || !adhaan || !adhaaanEnabled) return;
 
     const now = currentTime;
@@ -501,7 +475,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
   const prayerColumns = isMobile ? 2 : isTablet ? 3 : 6;
 
   return (
-    <div style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }} className="min-h-screen relative overflow-hidden px-2 sm:px-3 md:px-4 lg:px-5 pt-3 sm:pt-3 md:pt-4 lg:pt-5 pb-4 sm:pb-8 md:pb-10">
+    <div style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }} className="min-h-screen relative overflow-hidden px-2 sm:px-4 lg:px-6 pt-2 sm:pt-2 lg:pt-3 pb-4 sm:pb-6 lg:pb-12">
       {/* Ambient Glows */}
       <div style={{
         position: 'absolute',
@@ -525,7 +499,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
       }}></div>
 
       {/* Dashboard Container */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-2 md:gap-3 lg:gap-3 relative z-10 max-w-7xl mx-auto w-full auto-rows-max">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 lg:gap-4 relative z-10 max-w-7xl mx-auto w-full auto-rows-max">
         {/* Prayer Times Grid - Full Width */}
         <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}`, boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)' }} className="col-span-1 lg:col-span-12 backdrop-blur-lg rounded-3xl p-3 sm:p-3 md:p-4 lg:p-5 min-h-fit lg:min-h-60 flex flex-col">
             <div className="text-base sm:text-lg lg:text-xl font-light uppercase tracking-widest mb-3 sm:mb-4 lg:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
@@ -563,7 +537,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                 </div>
               </div>
             </div>
-            <div style={{ gridTemplateColumns: `repeat(${prayerColumns}, 1fr)` }} className="grid gap-2 sm:gap-2 md:gap-3 lg:gap-4 flex-1 auto-rows-fr w-full mt-6 sm:mt-8 lg:mt-10">
+            <div style={{ gridTemplateColumns: `repeat(${prayerColumns}, 1fr)` }} className="grid gap-2 sm:gap-2 md:gap-2 lg:gap-4 flex-1 auto-rows-fr w-full mt-4 sm:mt-6 lg:mt-10">
               {prayers.map((prayer, index) => {
                 // Calculate prayer duration
                 let durationMins = 0;
@@ -596,7 +570,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                       : '0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)',
                     transform: prayer.isActive ? 'translateY(-6px) scale(1.08) perspective(1200px) rotateX(2deg)' : 'perspective(1200px)',
                   }}
-                  className="rounded-lg sm:rounded-xl md:rounded-2xl p-2 sm:p-2 md:p-3 lg:p-3 text-center relative flex flex-col justify-center items-center min-h-24 sm:min-h-28 md:min-h-32 lg:min-h-36 transition-all duration-300 ease-out"
+                  className="rounded-lg sm:rounded-xl md:rounded-2xl p-2 sm:p-2 md:p-3 lg:p-3 text-center relative flex flex-col justify-center items-center min-h-20 sm:min-h-24 md:min-h-28 lg:min-h-36 transition-all duration-300 ease-out"
                 >
                   {/* Adhaan Mute Toggle Button */}
                   <button
@@ -649,7 +623,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                       border: '1px solid #06b6d4',
                       boxShadow: '0 15px 40px rgba(6, 182, 212, 0.2), 0 10px 25px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)',
                     }}
-                    className="rounded-lg sm:rounded-2xl p-2 sm:p-3 lg:p-4 text-center flex flex-col justify-center items-center min-h-28 sm:min-h-32 lg:min-h-40 transition-all duration-300 ease-out"
+                    className="rounded-lg sm:rounded-2xl p-2 sm:p-3 lg:p-4 text-center flex flex-col justify-center items-center min-h-24 sm:min-h-28 md:min-h-32 lg:min-h-40 transition-all duration-300 ease-out"
                   >
                     <div style={{ color: '#06b6d4' }} className="text-xs sm:text-sm lg:text-base uppercase tracking-widest font-light mb-2 sm:mb-3">
                       {displayText}
@@ -669,17 +643,6 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
 
             </div>
 
-            {/* Hadith of the Day */}
-            {hadith && (
-              <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-opacity-20 text-center" style={{ borderColor: currentTheme.glassBorder }}>
-                <div style={{ color: currentTheme.text }} className="text-base sm:text-lg lg:text-2xl font-light leading-relaxed flex flex-wrap items-baseline gap-2 justify-center">
-                  <span>{hadith.text}</span>
-                  <span style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg whitespace-nowrap">
-                    — {hadith.reference}
-                  </span>
-                </div>
-              </div>
-            )}
         </div>
 
         {/* LEFT COLUMN */}
@@ -788,71 +751,137 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
         </div>
       </div>
 
-      {/* Toggle Controls - Bottom Right Corner */}
-      <div className="fixed bottom-2 sm:bottom-3 right-2 sm:right-3 flex flex-col sm:flex-row gap-1 sm:gap-2 z-50">
-        {/* Adhaan Sound Toggle */}
-        <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}` }} className="backdrop-blur-lg rounded-full p-1 flex gap-1">
-          <button
-            onClick={() => setAdhaanEnabled(!adhaaanEnabled)}
-            style={{
-              background: adhaaanEnabled ? '#34d399' : 'transparent',
-              color: adhaaanEnabled ? '#070a12' : currentTheme.text,
-            }}
-            className="px-2 sm:px-3 py-1 rounded-full border-none cursor-pointer text-xs sm:text-sm transition-all duration-300 ease-out"
-            title="Toggle Adhaan sound"
-          >
-            {adhaaanEnabled ? '🔊' : '🔇'}
-          </button>
-        </div>
+      {/* Settings Gear Icon - Bottom Right Corner */}
+      <button
+        onClick={() => setShowSettings(!showSettings)}
+        style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}`, color: currentTheme.text }}
+        className="fixed bottom-3 sm:bottom-4 right-3 sm:right-4 w-10 h-10 sm:w-11 sm:h-11 rounded-full backdrop-blur-lg flex items-center justify-center text-lg sm:text-xl hover:scale-110 transition-transform duration-300 z-50 cursor-pointer"
+        title="Open settings"
+      >
+        ⚙️
+      </button>
 
-        {/* Temperature Unit Toggle */}
-        <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}` }} className="backdrop-blur-lg rounded-full p-1 flex gap-1">
-          <button
-            onClick={() => setTempUnit('C')}
-            style={{
-              background: tempUnit === 'C' ? '#34d399' : 'transparent',
-              color: tempUnit === 'C' ? '#070a12' : currentTheme.text,
-            }}
-            className="px-2 sm:px-3 py-1 rounded-full border-none cursor-pointer text-xs sm:text-sm font-medium transition-all duration-300 ease-out"
-          >
-            °C
-          </button>
-          <button
-            onClick={() => setTempUnit('F')}
-            style={{
-              background: tempUnit === 'F' ? '#34d399' : 'transparent',
-              color: tempUnit === 'F' ? '#070a12' : currentTheme.text,
-            }}
-            className="px-2 sm:px-3 py-1 rounded-full border-none cursor-pointer text-xs sm:text-sm font-medium transition-all duration-300 ease-out"
-          >
-            °F
-          </button>
-        </div>
+      {/* Settings Modal */}
+      {showSettings && (
+        <>
+          {/* Modal Backdrop */}
+          <div
+            onClick={() => setShowSettings(false)}
+            className="fixed inset-0 bg-black bg-opacity-40 z-40 backdrop-blur-sm"
+          />
 
-        {/* Theme Toggle */}
-        <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}` }} className="backdrop-blur-lg rounded-full p-1 flex gap-1">
-          <button
-            onClick={() => setTheme('dark')}
-            style={{
-              background: theme === 'dark' ? '#34d399' : 'transparent',
-              color: theme === 'dark' ? '#070a12' : currentTheme.text,
-            }}
-            className="px-2 sm:px-3 py-1 rounded-full border-none cursor-pointer text-xs sm:text-sm transition-all duration-300 ease-out"
+          {/* Settings Panel */}
+          <div
+            style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}`, boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)' }}
+            className="fixed bottom-20 sm:bottom-24 right-4 sm:right-5 w-64 sm:w-80 backdrop-blur-lg rounded-3xl p-6 z-50 flex flex-col gap-6"
           >
-            🌙
-          </button>
-          <button
-            onClick={() => setTheme('light')}
-            style={{
-              background: theme === 'light' ? '#34d399' : 'transparent',
-              color: theme === 'light' ? '#070a12' : currentTheme.text,
-            }}
-            className="px-2 sm:px-3 py-1 rounded-full border-none cursor-pointer text-xs sm:text-sm transition-all duration-300 ease-out"
-          >
-            ☀️
-          </button>
-        </div>
-      </div>
+            {/* Close Button */}
+            <div className="flex justify-between items-center mb-2">
+              <div style={{ color: currentTheme.muted }} className="text-sm uppercase tracking-widest font-light">
+                Settings
+              </div>
+              <button
+                onClick={() => setShowSettings(false)}
+                style={{ color: currentTheme.text }}
+                className="text-2xl cursor-pointer hover:scale-125 transition-transform"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Adhaan Sound Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <div style={{ color: currentTheme.text }} className="text-sm font-medium">
+                  Adhaan Sound
+                </div>
+                <div style={{ color: currentTheme.muted }} className="text-xs">
+                  {adhaaanEnabled ? 'Enabled' : 'Muted'}
+                </div>
+              </div>
+              <button
+                onClick={() => setAdhaanEnabled(!adhaaanEnabled)}
+                style={{
+                  background: adhaaanEnabled ? '#34d399' : 'transparent',
+                  color: adhaaanEnabled ? '#070a12' : currentTheme.text,
+                  border: `1px solid ${adhaaanEnabled ? '#34d399' : currentTheme.glassBorder}`
+                }}
+                className="px-4 py-2 rounded-lg border cursor-pointer text-sm font-medium transition-all duration-300"
+              >
+                {adhaaanEnabled ? '🔊' : '🔇'}
+              </button>
+            </div>
+
+            {/* Temperature Unit Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <div style={{ color: currentTheme.text }} className="text-sm font-medium">
+                  Temperature Unit
+                </div>
+                <div style={{ color: currentTheme.muted }} className="text-xs">
+                  {tempUnit === 'C' ? 'Celsius' : 'Fahrenheit'}
+                </div>
+              </div>
+              <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}` }} className="flex gap-1 rounded-lg p-1">
+                <button
+                  onClick={() => setTempUnit('C')}
+                  style={{
+                    background: tempUnit === 'C' ? '#34d399' : 'transparent',
+                    color: tempUnit === 'C' ? '#070a12' : currentTheme.text,
+                  }}
+                  className="px-3 py-1.5 rounded-md cursor-pointer text-sm font-medium transition-all duration-300"
+                >
+                  °C
+                </button>
+                <button
+                  onClick={() => setTempUnit('F')}
+                  style={{
+                    background: tempUnit === 'F' ? '#34d399' : 'transparent',
+                    color: tempUnit === 'F' ? '#070a12' : currentTheme.text,
+                  }}
+                  className="px-3 py-1.5 rounded-md cursor-pointer text-sm font-medium transition-all duration-300"
+                >
+                  °F
+                </button>
+              </div>
+            </div>
+
+            {/* Theme Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <div style={{ color: currentTheme.text }} className="text-sm font-medium">
+                  Theme
+                </div>
+                <div style={{ color: currentTheme.muted }} className="text-xs">
+                  {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+                </div>
+              </div>
+              <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}` }} className="flex gap-1 rounded-lg p-1">
+                <button
+                  onClick={() => setTheme('dark')}
+                  style={{
+                    background: theme === 'dark' ? '#34d399' : 'transparent',
+                    color: theme === 'dark' ? '#070a12' : currentTheme.text,
+                  }}
+                  className="px-3 py-1.5 rounded-md cursor-pointer text-sm transition-all duration-300"
+                >
+                  🌙
+                </button>
+                <button
+                  onClick={() => setTheme('light')}
+                  style={{
+                    background: theme === 'light' ? '#34d399' : 'transparent',
+                    color: theme === 'light' ? '#070a12' : currentTheme.text,
+                  }}
+                  className="px-3 py-1.5 rounded-md cursor-pointer text-sm transition-all duration-300"
+                >
+                  ☀️
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
