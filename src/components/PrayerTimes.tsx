@@ -11,6 +11,9 @@ interface Prayer {
   time: string;
   isActive: boolean;
   isComing: boolean;
+  isNext?: boolean;
+  isUpcoming?: boolean;
+  isPast?: boolean;
 }
 
 interface ApiResponse {
