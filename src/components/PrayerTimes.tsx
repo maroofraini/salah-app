@@ -224,12 +224,12 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
 
         setGregorianDate({
           day: data.data.date.gregorian.day,
-          month: typeof data.data.date.gregorian.month === 'object' ? data.data.date.gregorian.month.number : data.data.date.gregorian.month,
+          month: data.data.date.gregorian.month,
           year: data.data.date.gregorian.year,
         });
         setHijriDate({
           day: data.data.date.hijri.day,
-          month: typeof data.data.date.hijri.month === 'object' ? data.data.date.hijri.month.number : data.data.date.hijri.month,
+          month: data.data.date.hijri.month,
           year: data.data.date.hijri.year,
         });
 
@@ -462,10 +462,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
   const gregorianMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-  const hijriMonthName = (() => {
-    const month = hijriMonths[parseInt(hijriDate.month) - 1];
-    return typeof month === 'string' ? month : (month?.en || '');
-  })();
+  const hijriMonthName = hijriMonths[parseInt(hijriDate.month) - 1] || '';
   const gregorianMonthName = gregorianMonths[parseInt(gregorianDate.month) - 1] || '';
   const dayOfWeekName = daysOfWeek[currentTime.getDay()];
 
@@ -491,7 +488,6 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth < 1024;
   const prayerColumns = isMobile ? 2 : isTablet ? 3 : 6;
-  const heroCols = isMobile ? 1 : 2;
 
   return (
     <div style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }} className="min-h-screen relative overflow-hidden px-2 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6 pb-4 sm:pb-12">
@@ -562,17 +558,17 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                   style={{
                     background: prayer.isActive
                       ? `linear-gradient(135deg, rgba(52, 211, 153, 0.15) 0%, rgba(52, 211, 153, 0.08) 100%), ${currentTheme.glassCard}`
-                      : prayer.isUpcoming
+                      : prayer.isComing
                       ? `linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%), ${currentTheme.glassCard}`
                       : `linear-gradient(135deg, rgba(148, 163, 184, 0.05) 0%, rgba(148, 163, 184, 0.02) 100%), ${currentTheme.glassCard}`,
                     border: prayer.isActive
                       ? '1px solid #34d399'
-                      : prayer.isUpcoming
+                      : prayer.isComing
                       ? '1px solid #3b82f6'
                       : `1px solid ${currentTheme.glassBorder}`,
                     boxShadow: prayer.isActive
                       ? '0 25px 60px rgba(52, 211, 153, 0.3), 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.1)'
-                      : prayer.isUpcoming
+                      : prayer.isComing
                       ? '0 15px 40px rgba(59, 130, 246, 0.2), 0 10px 25px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)'
                       : '0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)',
                     transform: prayer.isActive ? 'translateY(-6px) scale(1.08) perspective(1200px) rotateX(2deg)' : 'perspective(1200px)',
@@ -593,7 +589,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                   <div style={{
                     color: prayer.isActive
                       ? '#34d399'
-                      : prayer.isUpcoming
+                      : prayer.isComing
                       ? '#3b82f6'
                       : '#94a3b8'
                   }} className="text-xs sm:text-sm lg:text-base uppercase tracking-widest font-light mb-1 sm:mb-2">
@@ -603,12 +599,12 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                     fontFamily: 'Bodoni Moda, serif',
                     color: prayer.isActive
                       ? '#34d399'
-                      : prayer.isUpcoming
+                      : prayer.isComing
                       ? '#3b82f6'
                       : '#94a3b8'
                   }} className="text-2xl sm:text-4xl lg:text-6xl font-light leading-tight">
                     {formatTo12Hour(prayer.time).time}
-                    <div style={{ color: prayer.isActive ? '#34d399' : prayer.isUpcoming ? '#3b82f6' : currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-light mt-0.5">
+                    <div style={{ color: prayer.isActive ? '#34d399' : prayer.isComing ? '#3b82f6' : currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-light mt-0.5">
                       {formatTo12Hour(prayer.time).period}
                     </div>
                   </div>
