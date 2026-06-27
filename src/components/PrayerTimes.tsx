@@ -490,7 +490,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
   const prayerColumns = isMobile ? 2 : isTablet ? 3 : 6;
 
   return (
-    <div style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }} className="min-h-screen relative overflow-hidden px-2 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6 pb-4 sm:pb-12">
+    <div style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }} className="min-h-screen relative overflow-hidden px-2 sm:px-3 md:px-4 lg:px-5 pt-3 sm:pt-3 md:pt-4 lg:pt-5 pb-4 sm:pb-8 md:pb-10">
       {/* Ambient Glows */}
       <div style={{
         position: 'absolute',
@@ -514,9 +514,9 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
       }}></div>
 
       {/* Dashboard Container */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 lg:gap-4 relative z-10 max-w-7xl mx-auto w-full auto-rows-max">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-2 md:gap-3 lg:gap-3 relative z-10 max-w-7xl mx-auto w-full auto-rows-max">
         {/* Prayer Times Grid - Full Width */}
-        <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}`, boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)' }} className="col-span-1 lg:col-span-12 backdrop-blur-lg rounded-3xl p-3 sm:p-4 lg:p-6 min-h-fit lg:min-h-60 flex flex-col">
+        <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}`, boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)' }} className="col-span-1 lg:col-span-12 backdrop-blur-lg rounded-3xl p-3 sm:p-3 md:p-4 lg:p-5 min-h-fit lg:min-h-60 flex flex-col">
             <div className="text-base sm:text-lg lg:text-xl font-light uppercase tracking-widest mb-3 sm:mb-4 lg:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
               <div>
                 <div style={{ color: currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-medium uppercase tracking-widest mb-2 sm:mb-3">
@@ -540,7 +540,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                 </div>
               </div>
             </div>
-            <div style={{ gridTemplateColumns: `repeat(${prayerColumns}, 1fr)` }} className="grid gap-2 sm:gap-4 lg:gap-6 flex-1 auto-rows-fr w-full">
+            <div style={{ gridTemplateColumns: `repeat(${prayerColumns}, 1fr)` }} className="grid gap-2 sm:gap-2 md:gap-3 lg:gap-4 flex-1 auto-rows-fr w-full">
               {prayers.map((prayer, index) => {
                 // Calculate prayer duration
                 let durationMins = 0;
@@ -558,22 +558,22 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                   style={{
                     background: prayer.isActive
                       ? `linear-gradient(135deg, rgba(52, 211, 153, 0.15) 0%, rgba(52, 211, 153, 0.08) 100%), ${currentTheme.glassCard}`
-                      : prayer.isComing
+                      : !prayer.isActive && !prayer.isPast
                       ? `linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%), ${currentTheme.glassCard}`
                       : `linear-gradient(135deg, rgba(148, 163, 184, 0.05) 0%, rgba(148, 163, 184, 0.02) 100%), ${currentTheme.glassCard}`,
                     border: prayer.isActive
                       ? '1px solid #34d399'
-                      : prayer.isComing
+                      : !prayer.isActive && !prayer.isPast
                       ? '1px solid #3b82f6'
                       : `1px solid ${currentTheme.glassBorder}`,
                     boxShadow: prayer.isActive
                       ? '0 25px 60px rgba(52, 211, 153, 0.3), 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.1)'
-                      : prayer.isComing
+                      : !prayer.isActive && !prayer.isPast
                       ? '0 15px 40px rgba(59, 130, 246, 0.2), 0 10px 25px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)'
                       : '0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)',
                     transform: prayer.isActive ? 'translateY(-6px) scale(1.08) perspective(1200px) rotateX(2deg)' : 'perspective(1200px)',
                   }}
-                  className="rounded-lg sm:rounded-2xl p-2 sm:p-3 lg:p-4 text-center relative flex flex-col justify-center items-center min-h-28 sm:min-h-32 lg:min-h-40 transition-all duration-300 ease-out"
+                  className="rounded-lg sm:rounded-xl md:rounded-2xl p-2 sm:p-2 md:p-3 lg:p-3 text-center relative flex flex-col justify-center items-center min-h-24 sm:min-h-28 md:min-h-32 lg:min-h-36 transition-all duration-300 ease-out"
                 >
                   {/* Adhaan Mute Toggle Button */}
                   <button
@@ -589,7 +589,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                   <div style={{
                     color: prayer.isActive
                       ? '#34d399'
-                      : prayer.isComing
+                      : !prayer.isActive && !prayer.isPast
                       ? '#3b82f6'
                       : '#94a3b8'
                   }} className="text-xs sm:text-sm lg:text-base uppercase tracking-widest font-light mb-1 sm:mb-2">
@@ -599,7 +599,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                     fontFamily: 'Bodoni Moda, serif',
                     color: prayer.isActive
                       ? '#34d399'
-                      : prayer.isComing
+                      : !prayer.isActive && !prayer.isPast
                       ? '#3b82f6'
                       : '#94a3b8'
                   }} className="text-2xl sm:text-4xl lg:text-6xl font-light leading-tight">
@@ -663,7 +663,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
         </div>
 
         {/* LEFT COLUMN */}
-        <div className="col-span-1 lg:col-span-10 row-span-1 flex flex-col gap-3 sm:gap-4 lg:gap-5">
+        <div className="col-span-1 lg:col-span-10 row-span-1 flex flex-col gap-2 sm:gap-2 md:gap-3 lg:gap-4">
           {/* Hero Card */}
           <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}`, boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)' }} className="backdrop-blur-lg rounded-3xl p-3 sm:p-4 lg:p-6 flex flex-col gap-8 sm:gap-12 lg:gap-16">
             {/* Top Row: Weather and Date */}
