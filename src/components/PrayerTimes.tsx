@@ -472,7 +472,8 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
 
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth < 1024;
-  const prayerColumns = isMobile ? 2 : isTablet ? 3 : 6;
+  // Fewer columns so prayer cards occupy more space and appear larger
+  const prayerColumns = isMobile ? 1 : isTablet ? 2 : 3;
 
   return (
     <div style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }} className="min-h-screen relative overflow-hidden px-2 sm:px-4 lg:px-6 pt-2 sm:pt-2 lg:pt-3 pb-4 sm:pb-6 lg:pb-12">
@@ -570,7 +571,7 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                       : '0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05)',
                     transform: prayer.isActive ? 'translateY(-6px) scale(1.08) perspective(1200px) rotateX(2deg)' : 'perspective(1200px)',
                   }}
-                  className="rounded-lg sm:rounded-xl md:rounded-2xl p-2 sm:p-2 md:p-3 lg:p-3 text-center relative flex flex-col justify-center items-center min-h-20 sm:min-h-24 md:min-h-28 lg:min-h-36 transition-all duration-300 ease-out"
+                  className="rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8 text-center relative flex flex-col justify-center items-center min-h-40 sm:min-h-48 md:min-h-60 lg:min-h-72 transition-all duration-300 ease-out"
                 >
                   {/* Adhaan Mute Toggle Button */}
                   <button
@@ -599,13 +600,13 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
                       : !prayer.isActive && !prayer.isPast
                       ? '#3b82f6'
                       : '#94a3b8'
-                  }} className="text-2xl sm:text-4xl lg:text-6xl font-light leading-tight">
+                  }} className="text-4xl sm:text-6xl lg:text-9xl font-light leading-tight">
                     {formatTo12Hour(prayer.time).time}
-                    <div style={{ color: prayer.isActive ? '#34d399' : prayer.isComing ? '#3b82f6' : currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-light mt-0.5">
+                    <div style={{ color: prayer.isActive ? '#34d399' : prayer.isComing ? '#3b82f6' : currentTheme.muted }} className="text-sm sm:text-lg lg:text-xl font-light mt-0.5">
                       {formatTo12Hour(prayer.time).period}
                     </div>
                   </div>
-                  <div style={{ color: currentTheme.muted }} className="text-xs sm:text-sm lg:text-base font-light mt-2 sm:mt-3">
+                  <div style={{ color: currentTheme.muted }} className="text-sm sm:text-lg lg:text-xl font-light mt-4 sm:mt-6">
                     {durationMins > 0 ? `${Math.floor(durationMins / 60) > 0 ? `${Math.floor(durationMins / 60)}h ` : ''}${durationMins % 60}m` : prayer.name === 'Isha' ? 'Till Tahajjud' : 'Last prayer'}
                   </div>
                   </div>
@@ -653,7 +654,8 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
             <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
               {/* Current Weather - Top Left */}
               {weather && (
-                <div className="flex-shrink-0 text-left flex flex-col justify-start gap-2">
+                // Hidden per user request: keep weather code but do not display
+                <div style={{ display: 'none' }} className="flex-shrink-0 text-left flex flex-col justify-start gap-2">
                   <div className="flex items-start gap-2">
                     <div style={{ fontFamily: 'Bodoni Moda, serif' }} className="leading-tight">
                       <div style={{ color: currentTheme.text }} className="text-2xl sm:text-4xl lg:text-5xl font-light whitespace-nowrap">
@@ -700,9 +702,9 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
               </div>
             </div>
 
-            {/* Bottom Row: Hourly Forecast */}
+            {/* Bottom Row: Hourly Forecast (hidden per user request) */}
             {hourlyWeather.length > 0 && (
-              <div className="flex-1">
+              <div style={{ display: 'none' }} className="flex-1">
                 <div className="flex flex-row gap-2 overflow-x-auto pb-1">
                   {hourlyWeather.filter(hour => {
                     const forecastDateTime = new Date(hour.fullTime);
@@ -726,8 +728,8 @@ const PrayerTimes: React.FC<PrayerTimesProps> = ({ location, locationName }) => 
           </div>
         </div>
 
-        {/* RIGHT COLUMN - Weather Forecast Strips */}
-        <div className="col-span-1 lg:col-span-2 row-span-1">
+        {/* RIGHT COLUMN - Weather Forecast Strips (hidden per user request) */}
+        <div style={{ display: 'none' }} className="col-span-1 lg:col-span-2 row-span-1">
           {/* Daily Forecast (5-Day) */}
           <div style={{ background: currentTheme.glassCard, border: `1px solid ${currentTheme.glassBorder}`, boxShadow: theme === 'dark' ? '0 30px 60px -15px rgba(0, 0, 0, 0.6)' : '0 30px 60px -15px rgba(0, 0, 0, 0.1)' }} className="backdrop-blur-lg rounded-3xl p-3 sm:p-4 lg:p-6 h-full flex flex-col">
             <div style={{ color: currentTheme.muted }} className="text-sm sm:text-base lg:text-lg font-light uppercase tracking-widest mb-2 sm:mb-3 lg:mb-4">
